@@ -1644,6 +1644,7 @@ void static Discover(boost::thread_group& threadGroup)
     if (!fDiscover)
         return;
 
+    LogPrintf("%s: Getting local host IP\n", __func__);
 #ifdef WIN32
     // Get local host IP
     char pszHostName[256] = "";
