@@ -6162,18 +6162,23 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
             std::set<NodeId> stallers;
             FindNextBlocksToDownload(pto->GetId(), MAX_BLOCKS_IN_TRANSIT_PER_PEER - statePtr->nBlocksInFlight, vToDownload, stallers);
             BOOST_FOREACH(CBlockIndex *pindex, vToDownload) {
+                std::string strAge;
+                int nAge = nNow/1000000 - pindex->GetBlockTime();
+                if (nAge < 86400)
+                    strAge = strprintf("%.1fhrs", nAge/3600.0);
+                else
+                    strAge = strprintf("%.1fdays", nAge/86400.0);
                 if (ThinBlocksActive(pto) && worker.isAvailable()) {
                     worker.requestBlock(pindex->GetBlockHash(), vGetData, *pto);
                     worker.setToWork(pindex->GetBlockHash());
-                    LogPrint("block", "Requesting thin block %s (%d) peer=%d\n",
-                            pindex->GetBlockHash().ToString(), pindex->nHeight, pto->id);
+                    LogPrint("block", "send get_xthin block %s (%d) age=%s peer=%d\n",
+                            pindex->GetBlockHash().ToString(), pindex->nHeight, strAge, pto->id);
                 }
                 else
                 {
                     vGetData.push_back(CInv(MSG_BLOCK, pindex->GetBlockHash()));
-                    LogPrint("block", "Requesting full block %s (%d) peer=%d\n", pindex->GetBlockHash().ToString(),
-                            pindex->nHeight, pto->id);
-
+                    LogPrint("block", "send getdata block %s (%d) age=%s peer=%d\n", pindex->GetBlockHash().ToString(),
+                            pindex->nHeight, strAge, pto->id);
                 }
                 MarkBlockAsInFlight()(pto->GetId(), pindex->GetBlockHash(), consensusParams, pindex);
             }
