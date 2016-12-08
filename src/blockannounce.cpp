@@ -147,6 +147,7 @@ bool BlockAnnounceReceiver::onBlockAnnounced(std::vector<CInv>& toFetch,
     // not a direct successor.
 
     if (!blocksInFlight.isInFlight(block) || !nodestate->initialHeadersReceived) {
+        LogPrintf("TEMP requestHeaders block %d peer=%d TEMP\n", block.ToString(), from.id); // REBTEMP
         requestHeaders(from, block);
     }
 
