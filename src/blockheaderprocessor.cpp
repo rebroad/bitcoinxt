@@ -126,9 +126,11 @@ std::tuple<bool, CBlockIndex*> DefaultHeaderProcessor::acceptHeaders(
         CBlockIndex *pindexFork = LastCommonAncestor(pindexLast, pindexBestHeader);
         std::string strFork;
         std::string strDesc;
+        bool fCheck = false;
         if (pindexFork->nHeight < pindexLast->nHeight) {
             bool fEqualWork = (pindexLast->nChainWork == pindexBestHeader->nChainWork);
             strFork += strprintf(" %sfork@%d", fEqualWork ? "=" : "", pindexFork->nHeight);
+            fCheck = true;
         } else if (pindexLast == chainActive.Tip())
             strDesc += "tip "; // it's the current tip
         else if (pindexLast == pindexBestHeader)
@@ -137,7 +139,20 @@ std::tuple<bool, CBlockIndex*> DefaultHeaderProcessor::acceptHeaders(
             strDesc += "old "; // it's less work than our current tip
         else if (pindexLast->nTx > 0)
             strDesc += "got "; // we have the full block already
-        LogPrint((headers.size() == 1 || fNew || pindexLast->nHeight > pindexBestHeader->nHeight-3) ? "block" : "blockhist", "recv %s%sheader %s (%d%s) peer=%d\n", fNew ? "new " : "", strDesc, pindexLast->GetBlockHash().ToString(), pindexLast->nHeight, strFork, pfrom->id);
+        std::string strAge;
+        int nAge = GetTime() - pindexLast->GetBlockTime();
+        if (abs(nAge) < 360)
+            strAge = strprintf("%ds", nAge);
+        else if (nAge < 86400)
+            strAge = strprintf("%.1fhrs", nAge/3600.0);
+        else
+            strAge = strprintf("%.1fdays", nAge/86400.0);
+        LogPrint((headers.size() == 1 || fNew || fCheck || pindexLast->nHeight > pindexBestHeader->nHeight-3) ? "block" : "blockhist", "recv %s%sheader %s (%d%s) age=%s peer=%d\n", fNew ? "new " : "", strDesc, pindexLast->GetBlockHash().ToString(), pindexLast->nHeight, strFork, strAge, pfrom->id);
+        if (fCheck && fNew) {
+            CBlockIndex *pindexTipFork = LastCommonAncestor(pindexLast, chainActive.Tip());
+            if (pindexTipFork->nHeight < chainActive.Tip()->nHeight)
+                LogPrint("block", "WARNING: current headers indicate a re-org may happen, back to height %d\n", pindexTipFork->nHeight);
+        }
     }
     return std::make_tuple(true, pindexLast);
 }
