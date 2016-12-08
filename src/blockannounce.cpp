@@ -100,7 +100,7 @@ BlockAnnounceReceiver::DownloadStrategy BlockAnnounceReceiver::pickDownloadStrat
 void requestHeaders(CNode& from, const uint256& block) {
 
     from.PushMessage("getheaders", chainActive.GetLocator(pindexBestHeader), block);
-    LogPrint("block", "getheaders (%d) %s to peer=%d\n",
+    LogPrint("block", "send getheaders (%d) %s peer=%d\n",
             pindexBestHeader->nHeight, block.ToString(), from.id);
 }
 
