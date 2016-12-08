@@ -5760,6 +5760,13 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t
         }
     }
 
+
+    else if (strCommand == "alert")
+    {
+        ;;
+    }
+
+
     else
     {
         // Ignore unknown commands for extensibility
