@@ -38,6 +38,7 @@ bool BlockSender::canSend(const CChain& activeChain, const CBlockIndex& block,
     // To prevent fingerprinting attacks, only send blocks outside of the active
     // chain if they are valid, and no more than a month older (both in time, and in
     // best equivalent proof of work) than the best header chain we know about.
+    // REBTODO - why ever send blocks to peers other than blocks we've advertised to those peers?
     bool send = block.IsValid(BLOCK_VALID_SCRIPTS) && (pindexBestHeader != NULL) &&
         (pindexBestHeader->GetBlockTime() - block.GetBlockTime() < nOneMonth) &&
         (GetBlockProofEquivalentTime(*pindexBestHeader, block, *pindexBestHeader, Params().GetConsensus()) < nOneMonth);

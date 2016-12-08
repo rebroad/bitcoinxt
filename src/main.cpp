@@ -3062,7 +3062,7 @@ bool InvalidateBlock(CValidationState& state, CBlockIndex *pindex) {
         }
     }
 
-    mempool.TrimToSize(GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000);
+    mempool.TrimToSize(GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000); // REBTODO - what does this do?
 
     // The resulting new best tip may not be in setBlockIndexCandidates anymore, so
     // add it again.
@@ -5398,7 +5398,7 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t
 
         NodeStatePtr(pfrom->id)->initialHeadersReceived = true;
 
-        auto sendGetHeaders = [pfrom](){
+        auto sendGetHeaders = [pfrom](){ // REBTODO - what the fuck does this do?
             pfrom->PushMessage("getheaders",
                     chainActive.GetLocator(pindexBestHeader), uint256());
         };
