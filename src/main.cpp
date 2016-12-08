@@ -5046,18 +5046,29 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t
             if (!Opt().IsStealthMode() && !pfrom->AddInventoryKnown(inv))
                 continue;
 
-            bool fAlreadyHave = AlreadyHave(inv);
-            LogPrint("net", "got inv: %s  %s peer=%d\n", inv.ToString(), fAlreadyHave ? "have" : "new", pfrom->id);
-
-            if (!fAlreadyHave && !fImporting && !fReindex && inv.type != MSG_BLOCK)
-                pfrom->AskFor(inv);
+            if (!fImporting && !fReindex && inv.type != MSG_BLOCK) {
+                bool fAlreadyHave = AlreadyHave(inv);
+                LogPrint("tx", "recv inv %s (%s) peer=%d\n", inv.ToString(), fAlreadyHave ? "have" : "new", pfrom->id);
+                if (!fAlreadyHave)
+                    pfrom->AskFor(inv);
+            }
 
             if (inv.type == MSG_BLOCK) {
+                BlockMap::iterator it = mapBlockIndex.find(inv.hash);
+                std::string strWhat;
+                if (it == mapBlockIndex.end())
+                    strWhat += "(new) ";
+                else {
+                    int theirheight = it->second->nHeight;
+                    strWhat += strprintf("(%d) ", theirheight);
+                }
                 BlockAnnounceReceiver ann(inv.hash, *pfrom, thinblockmg, blocksInFlight);
                 if (ann.onBlockAnnounced(vToFetch, false)) {
                     // This block has been requested from peer.
+                    strWhat += "send getdata. ";
                     MarkBlockAsInFlight()(pfrom->id, inv.hash, Params().GetConsensus());
                 }
+                LogPrint("block", "recv inv %s %s peer=%d\n", inv.ToString(), strWhat, pfrom->id);
             }
 
             // Track requests for our stuff
