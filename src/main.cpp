@@ -3108,12 +3108,6 @@ bool ReconsiderBlock(CValidationState& state, CBlockIndex *pindex) {
 
 CBlockIndex* AddToBlockIndex(const CBlockHeader& block)
 {
-    // Check for duplicate
-    uint256 hash = block.GetHash();
-    BlockMap::iterator it = mapBlockIndex.find(hash);
-    if (it != mapBlockIndex.end())
-        return it->second;
-
     // Construct new block index object
     CBlockIndex* pindexNew = new CBlockIndex(block);
     assert(pindexNew);
@@ -3121,6 +3115,7 @@ CBlockIndex* AddToBlockIndex(const CBlockHeader& block)
     // to avoid miners withholding blocks but broadcasting headers, to get a
     // competitive advantage.
     pindexNew->nSequenceId = 0;
+    uint256 hash = block.GetHash();
     BlockMap::iterator mi = mapBlockIndex.insert(make_pair(hash, pindexNew)).first;
     pindexNew->phashBlock = &((*mi).first);
     BlockMap::iterator miPrev = mapBlockIndex.find(block.hashPrevBlock);
@@ -4055,7 +4050,12 @@ bool InitBlockIndex() {
                 return error("LoadBlockIndex(): FindBlockPos failed");
             if (!WriteBlockToDisk(block, blockPos, chainparams.MessageStart()))
                 return error("LoadBlockIndex(): writing genesis block to disk failed");
-            CBlockIndex *pindex = AddToBlockIndex(block);
+            BlockMap::iterator it = mapBlockIndex.find(block.GetHash());
+            CBlockIndex *pindex = NULL;
+            if (it != mapBlockIndex.end())
+                pindex = it->second;
+            else
+                pindex = AddToBlockIndex(block);
             if (!ReceivedBlockTransactions(block, state, pindex, blockPos))
                 return error("LoadBlockIndex(): genesis block not accepted");
             if (!ActivateBestChain(state, &block))
