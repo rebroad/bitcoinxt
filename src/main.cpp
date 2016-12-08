@@ -4498,6 +4498,25 @@ void static ProcessGetData(CNode* pfrom)
                 bool canSend = haveBlock && blockSender.canSend(
                         chainActive, *(mi->second), pindexBestHeader);
 
+                std::string strWhat;
+                if (!haveBlock) {
+                    // REBTODO - Misbehaviour
+                    strWhat = "- UNKNOWN!";
+                } else {
+                    strWhat = strprintf("(%d) ", mi->second->nHeight);
+                    if (!canSend) {
+                        if (mi->second->nStatus & BLOCK_HAVE_DATA) {
+                            // REBTODO - Misbehaviour
+                            strWhat += " old fork - not sending.";
+                        } else {
+                            strWhat += " pruned - send notfound.";
+                            vNotFound.push_back(inv); // let them know we've lost it
+                        }
+                    } else
+                        strWhat += " - sending.";
+                }
+                LogPrint("block", "recv getdata %s %s peer=%d\n", inv.ToString(), strWhat, pfrom->id);
+
                 if (canSend)
                     blockSender.send(chainActive, *pfrom, *(mi->second), inv);
             }
@@ -4509,6 +4528,7 @@ void static ProcessGetData(CNode* pfrom)
                     LOCK(cs_mapRelay);
                     map<CInv, CDataStream>::iterator mi = mapRelay.find(inv);
                     if (mi != mapRelay.end()) {
+                        LogPrint("tx", "recv getdata %s - relay sending. peer=%d\n", inv.ToString(), pfrom->id);
                         pfrom->PushMessage(inv.GetCommand(), (*mi).second);
                         pushed = true;
                     }
@@ -4519,11 +4539,13 @@ void static ProcessGetData(CNode* pfrom)
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                         ss.reserve(1000);
                         ss << tx;
+                        LogPrint("tx", "recv getdata %s - mempool sending. peer=%d\n", inv.ToString(), pfrom->id);
                         pfrom->PushMessage("tx", ss);
                         pushed = true;
                     }
                 }
                 if (!pushed) {
+                    LogPrint("tx", "recv getdata %s - send notfound. peer=%d\n", inv.ToString(), pfrom->id);
                     vNotFound.push_back(inv);
                 }
             }
@@ -5086,12 +5108,6 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t
             Misbehaving(pfrom->GetId(), 20);
             return error("message getdata size() = %u", vInv.size());
         }
-
-        if (fDebug || (vInv.size() != 1))
-            LogPrint("netrecv", "received getdata (%u invsz) peer=%d\n", vInv.size(), pfrom->id);
-
-        if ((fDebug && vInv.size() > 0) || (vInv.size() == 1))
-            LogPrint("netrecv", "received getdata for: %s peer=%d\n", vInv[0].ToString(), pfrom->id);
 
         pfrom->vRecvGetData.insert(pfrom->vRecvGetData.end(), vInv.begin(), vInv.end());
         ProcessGetData(pfrom);
