@@ -4874,15 +4874,15 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t
 
         string remoteAddr;
         if (fLogIPs)
-            remoteAddr = ", peeraddr=" + pfrom->addr.ToString();
+            remoteAddr = ", them=" + pfrom->addr.ToString();
 
         CIPGroupData ipgroup = pfrom->ipgroupSlot->Group();
         string group = ipgroup.name != "" ? tfm::format(", ipgroup=%s", ipgroup.name) : "";
 
-        LogPrintf("receive version message: %s: version %d, blocks=%d, us=%s, peerid=%d%s%s\n",
+        LogPrintf("recv version: %s: version %d, blocks=%d, relay=%s, services=%08x, us=%s%s%s, peer=%d\n",
                   pfrom->cleanSubVer, pfrom->nVersion,
-                  pfrom->nStartingHeight, addrMe.ToString(), pfrom->id,
-                  group, remoteAddr);
+                  pfrom->nStartingHeight, pfrom->fRelayTxes ? "1" : "0", pfrom->nServices,
+                  addrMe.ToString(), remoteAddr, group, pfrom->id);
 
         int64_t nTimeOffset = nTime - GetTime();
         pfrom->nTimeOffset = nTimeOffset;
