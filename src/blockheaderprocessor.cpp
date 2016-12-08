@@ -82,6 +82,23 @@ bool DefaultHeaderProcessor::operator()(const std::vector<CBlockHeader>& headers
     return true;
 }
 
+CBlockIndex* LastCommonAncestor(CBlockIndex* pa, CBlockIndex* pb) {
+    if (pa->nHeight > pb->nHeight) {
+        pa = pa->GetAncestor(pb->nHeight);
+    } else if (pb->nHeight > pa->nHeight) {
+        pb = pb->GetAncestor(pa->nHeight);
+    }
+
+    while (pa != pb && pa && pb) {
+        pa = pa->pprev;
+        pb = pb->pprev;
+    }
+
+    // Eventually all chain branches meet at the genesis block.
+    assert(pa == pb);
+    return pa;
+}
+
 std::tuple<bool, CBlockIndex*> DefaultHeaderProcessor::acceptHeaders(
         const std::vector<CBlockHeader>& headers) {
 
@@ -93,7 +110,8 @@ std::tuple<bool, CBlockIndex*> DefaultHeaderProcessor::acceptHeaders(
             return std::make_tuple(
                     error("non-continuous headers sequence"), pindexLast);
         }
-        if (!AcceptBlockHeader(header, state, &pindexLast)) {
+        int ret = AcceptBlockHeader(header, state, &pindexLast);
+        if (ret == false) {
             int nDoS;
             if (state.IsInvalid(nDoS)) {
                 if (nDoS > 0)
@@ -102,6 +120,24 @@ std::tuple<bool, CBlockIndex*> DefaultHeaderProcessor::acceptHeaders(
                         error("invalid header received"), pindexLast);
             }
         }
+
+        bool fNew = (ret == 2); // AcceptBlockHeader just added it to the block index
+        // REBTODO - debug below only if it's new to the BlockIndex within the last 2 minutes
+        CBlockIndex *pindexFork = LastCommonAncestor(pindexLast, pindexBestHeader);
+        std::string strFork;
+        std::string strDesc;
+        if (pindexFork->nHeight < pindexLast->nHeight) {
+            bool fEqualWork = (pindexLast->nChainWork == pindexBestHeader->nChainWork);
+            strFork += strprintf(" %sfork@%d", fEqualWork ? "=" : "", pindexFork->nHeight);
+        } else if (pindexLast == chainActive.Tip())
+            strDesc += "tip "; // it's the current tip
+        else if (pindexLast == pindexBestHeader)
+            strDesc += "best "; // it's the current best header
+        else if (pindexLast->nChainWork < chainActive.Tip()->nChainWork)
+            strDesc += "old "; // it's less work than our current tip
+        else if (pindexLast->nTx > 0)
+            strDesc += "got "; // we have the full block already
+        LogPrint((headers.size() == 1 || fNew || pindexLast->nHeight > pindexBestHeader->nHeight-3) ? "block" : "blockhist", "recv %s%sheader %s (%d%s) peer=%d\n", fNew ? "new " : "", strDesc, pindexLast->GetBlockHash().ToString(), pindexLast->nHeight, strFork, pfrom->id);
     }
     return std::make_tuple(true, pindexLast);
 }
