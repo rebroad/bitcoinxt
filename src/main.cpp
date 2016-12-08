@@ -2653,10 +2653,16 @@ void static UpdateTip(CBlockIndex *pindexNew) {
     nTimeBestReceived = GetTime();
     mempool.AddTransactionsUpdated(1);
 
-    LogPrintf("%s: new best=%s  height=%d  log2_work=%.8g  tx=%lu  date=%s progress=%f  cache=%.1fMiB(%utx)\n", __func__,
-      chainActive.Tip()->GetBlockHash().ToString(), chainActive.Height(), log(chainActive.Tip()->nChainWork.getdouble())/log(2.0), (unsigned long)chainActive.Tip()->nChainTx,
-      DateTimeStrFormat("%Y-%m-%d %H:%M:%S", chainActive.Tip()->GetBlockTime()),
-      Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), chainActive.Tip()), pcoinsTip->DynamicMemoryUsage() * (1.0 / (1<<20)), pcoinsTip->GetCacheSize());
+    std::string strAge;
+    int nAge = GetTime() - chainActive.Tip()->GetBlockTime();
+    if (abs(nAge) < 360)
+        strAge = strprintf("%ds", nAge);
+    else if (nAge < 86400)
+        strAge = strprintf("%.1fhrs", nAge/3600.0);
+    else
+        strAge = strprintf("%.1fdays", nAge/86400.0);
+    LogPrintf("%s: new best=%s (%d) tx=%lu age=%s\n", __func__,
+      chainActive.Tip()->GetBlockHash().ToString(), chainActive.Height(), (unsigned long)chainActive.Tip()->nTx, strAge);
 
     cvBlockChange.notify_all();
 
