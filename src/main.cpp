@@ -5466,11 +5466,23 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t
     }
     else if (strCommand == "block" && !fImporting && !fReindex) // Ignore blocks received while importing
     {
+        int nSize = vRecv.size();
         CBlock block;
         vRecv >> block;
 
         CInv inv(MSG_BLOCK, block.GetHash());
-        LogPrintf("received block %s peer=%d\n", inv.hash.ToString(), pfrom->id);
+        std::string strExtra;
+        BlockMap::iterator mi = mapBlockIndex.find(block.GetHash());
+        if (mi != mapBlockIndex.end()) {
+            std::string strAge;
+            int nAge = GetTime() - mi->second->GetBlockTime();
+            if (nAge < 86400)
+                strAge = strprintf("%.1fhrs", nAge/3600.0);
+            else
+                strAge = strprintf("%.1fdays", nAge/86400.0);
+            strExtra = strprintf(" (%d) age=%s", mi->second->nHeight, strAge);
+        }
+        LogPrint("block", "recv block %s%s size=%d peer=%d\n", inv.hash.ToString(), strExtra, nSize, pfrom->id);
 
         pfrom->AddInventoryKnown(inv);
 
